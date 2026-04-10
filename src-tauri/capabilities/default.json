@@ -1,0 +1,21 @@
+{
+  "$schema": "https://v2.tauri.app/schemas/capability.schema.json",
+  "identifier": "default",
+  "description": "Default permissions for Markdown Viewer",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:default",
+    "dialog:allow-open",
+    "fs:default",
+    "fs:allow-read-text-file",
+    "fs:allow-read-file",
+    "fs:allow-exists",
+    {
+      "identifier": "fs:scope",
+      "allow": [{ "path": "**" }]
+    },
+    "opener:default",
+    "opener:allow-open-url"
+  ]
+}

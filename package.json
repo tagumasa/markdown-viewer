@@ -1,0 +1,28 @@
+{
+  "name": "tauri-markdown-viewer",
+  "version": "1.0.0",
+  "description": "A rich Markdown viewer built with Tauri and TypeScript",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build:frontend": "tsc && vite build",
+    "build": "npm run build:frontend && tauri build",
+    "build:tauri": "tauri build",
+    "dev:tauri": "tauri dev"
+  },
+  "dependencies": {
+    "dompurify": "^3.2.4",
+    "marked": "^12.0.0",
+    "mermaid": "^11.4.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/cli": "^2.10.1",
+    "@tauri-apps/plugin-dialog": "^2.2.0",
+    "@tauri-apps/plugin-fs": "^2.2.0",
+    "@tauri-apps/plugin-opener": "^2.5.3",
+    "@types/dompurify": "^3.0.5",
+    "typescript": "^5.8.2",
+    "vite": "^5.4.14"
+  }
+}
