@@ -32,7 +32,7 @@ A simple desktop Markdown viewer built with [Tauri v2](https://v2.tauri.app/) an
 #### Steps
 
 ```bash
-git clone https://github.com/tgms/markdown-viewer.git
+git clone https://github.com/tagumasa/markdown-viewer.git
 cd markdown-viewer
 npm install
 npm run build

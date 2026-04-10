@@ -32,7 +32,7 @@
 #### 手順
 
 ```bash
-git clone https://github.com/tgms/markdown-viewer.git
+git clone https://github.com/tagumasa/markdown-viewer.git
 cd markdown-viewer
 npm install
 npm run build
