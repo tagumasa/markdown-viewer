@@ -312,3 +312,14 @@ kbd {
 ::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 5px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
 ::selection { background-color: var(--selection); }
+
+body.drag-over::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  border: 3px solid var(--accent);
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 9999;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}

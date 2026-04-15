@@ -4,6 +4,8 @@ import mermaid from 'mermaid';
 import { open } from '@tauri-apps/plugin-dialog';
 import { readTextFile, readFile } from '@tauri-apps/plugin-fs';
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
+import { listen } from '@tauri-apps/api/event';
 
 interface Tab {
   id: string;
@@ -122,21 +124,6 @@ class MarkdownViewer {
         }
       }
     });
-
-    document.addEventListener('drop', (e) => {
-      e.preventDefault();
-      const files = e.dataTransfer?.files;
-      if (files && files.length > 0) {
-        const file = files[0];
-        if (file.name.match(/\.(md|markdown|mdown|mkd)$/i)) {
-          this.readDroppedFile(file);
-        }
-      }
-    });
-
-    document.addEventListener('dragover', (e) => {
-      e.preventDefault();
-    });
   }
 
   private async setupTauriListeners(): Promise<void> {
@@ -144,18 +131,34 @@ class MarkdownViewer {
       this.closeActiveTab();
     });
     this.listeners.push(unlistenClose);
+
+    const unlistenDrop = await getCurrentWebview().onDragDropEvent(async (event) => {
+      const body = document.body;
+      if (event.payload.type === 'enter' || event.payload.type === 'over') {
+        body.classList.add('drag-over');
+      } else if (event.payload.type === 'leave') {
+        body.classList.remove('drag-over');
+      } else if (event.payload.type === 'drop') {
+        body.classList.remove('drag-over');
+        const mdFiles = event.payload.paths.filter(p =>
+          p.match(/\.(md|markdown|mdown|mkd)$/i)
+        );
+        for (const filePath of mdFiles) {
+          try {
+            const content = await readTextFile(filePath);
+            this.openTab(filePath, content);
+          } catch (error) {
+            console.error('Failed to read dropped file:', filePath, error);
+          }
+        }
+      }
+    });
+    this.listeners.push(unlistenDrop);
   }
 
   private async listen(event: string, callback: (data: any) => void): Promise<() => void> {
-    const { listen } = await import('@tauri-apps/api/event');
     const unlisten = await listen(event, (e) => callback(e.payload));
     return unlisten;
-  }
-
-  private async readDroppedFile(file: File): Promise<void> {
-    const content = await file.text();
-    const filePath = (file as any).path || file.name;
-    this.openTab(filePath, content);
   }
 
   private openTab(filePath: string, content: string): void {
