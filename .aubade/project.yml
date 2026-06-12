@@ -1,0 +1,59 @@
+# list of additional workspace folders for cross-package reference support
+# in monorepos. Example: ["../sibling-package"]
+additional_workspace_folders: []
+# list of substring patterns to allow in execute_shell_command.
+# When non-empty, only commands matching at least one pattern are permitted.
+# Example: ["git ", "go ", "npm ", "cargo "]
+allowed_shell_commands: []
+# list of mode names to that are always to be included in the set of active modes
+base_modes: null
+# list of substring patterns to block in execute_shell_command.
+# Extends the default blocklist and the global configuration.
+# Patterns are matched as case-insensitive substrings of the full command.
+# Example: ["| sh", "| bash", "| zsh"]
+blocked_shell_commands: []
+# list of mode names that are to be activated by default.
+default_modes: null
+# the encoding used by text files in the project
+encoding: utf-8
+# list of tool names to exclude.
+excluded_tools: []
+# fixed set of tools to use as the base tool set (if non-empty).
+fixed_tools: []
+# whether to use project's .gitignore files to ignore files
+ignore_all_files_in_gitignore: true
+# list of regex patterns for memories to completely ignore.
+# Extends the list from the global configuration, merging the two lists.
+ignored_memory_patterns: []
+# list of additional paths to ignore in this project.
+# Note: global ignored_paths from aubade_config.yml are also applied additively.
+ignored_paths: []
+# list of tools to include that would otherwise be disabled.
+included_optional_tools: []
+# initial prompt for the project. It will always be given to the LLM upon activating the project.
+initial_prompt: ""
+# The language backend to use for this project.
+# If not set, the global setting from aubade_config.yml is used.
+language_backend: null
+# list of languages for which language servers are started.
+# Note:
+#   - For C, use cpp
+#   - For JavaScript, use typescript
+languages:
+- rust
+- typescript
+# line ending convention to use when writing source files.
+# Possible values: unset (use global setting), "lf", "crlf", or "native" (platform default)
+line_ending: null
+# advanced configuration option allowing to configure language server-specific options.
+ls_specific_settings: {}
+# the name by which the project can be referenced within Aubade
+project_name: markdown-viewer
+# whether the project is in read-only mode
+read_only: false
+# list of regex patterns which, when matched, mark a memory entry as read-only.
+# Extends the list from the global configuration, merging the two lists.
+read_only_memory_patterns: []
+# time budget (seconds) per tool call for the retrieval of additional symbol information.
+# If null or missing, use the setting from the global configuration.
+symbol_info_budget: null
