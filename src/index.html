@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Markdown Viewer</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="toolbar">
+      <div class="toolbar-left">
+        <button id="open-btn" class="toolbar-btn" title="Open File (Ctrl+O)">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M1.5 1h4l1 1H14.5l.5.5v3h-1V3H6.5l-1-1H2v9h5v1H1.5z"/>
+          </svg>
+          Open
+        </button>
+      </div>
+      <div class="toolbar-center">
+        <div id="tabs-container"></div>
+      </div>
+      <div class="toolbar-right">
+        <button id="theme-btn" class="toolbar-btn" title="Toggle Theme">
+          <span id="theme-icon">🌙</span>
+        </button>
+      </div>
+    </header>
+    <main id="content">
+      <div id="welcome-message">
+        <h1>Markdown Viewer</h1>
+        <p>Press <kbd>Ctrl</kbd>+<kbd>O</kbd> to open a file</p>
+        <p>Or drag and drop a markdown file here</p>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
