@@ -52,8 +52,8 @@ npm run dev:tauri
 |-------|------------|
 | Desktop shell | [Tauri v2](https://v2.tauri.app/) (Rust) |
 | Frontend | TypeScript + Vanilla JS |
-| Build tool | [Vite v5](https://vitejs.dev/) |
-| Markdown parser | [marked v12](https://marked.js.org/) |
+| Build tool | [Vite v8](https://vitejs.dev/) |
+| Markdown parser | [marked v18](https://marked.js.org/) |
 | Diagrams | [Mermaid v11](https://mermaid.js.org/) |
 | HTML sanitization | [DOMPurify v3](https://github.com/cure53/DOMPurify) |
 

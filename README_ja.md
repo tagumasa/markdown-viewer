@@ -52,8 +52,8 @@ npm run dev:tauri
 |----|------|
 | デスクトップシェル | [Tauri v2](https://v2.tauri.app/)（Rust） |
 | フロントエンド | TypeScript + Vanilla JS |
-| ビルドツール | [Vite v5](https://vitejs.dev/) |
-| Markdown パーサー | [marked v12](https://marked.js.org/) |
+| ビルドツール | [Vite v8](https://vitejs.dev/) |
+| Markdown パーサー | [marked v18](https://marked.js.org/) |
 | ダイアグラム | [Mermaid v11](https://mermaid.js.org/) |
 | HTML サニタイズ | [DOMPurify v3](https://github.com/cure53/DOMPurify) |
 

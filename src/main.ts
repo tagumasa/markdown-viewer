@@ -2,10 +2,9 @@ import { marked, type RendererObject } from "marked";
 import DOMPurify from "dompurify";
 import mermaid from "mermaid";
 import { open } from "@tauri-apps/plugin-dialog";
-import { readTextFile, readFile } from "@tauri-apps/plugin-fs";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { listen } from "@tauri-apps/api/event";
 
 interface Tab {
   id: string;
@@ -79,18 +78,19 @@ class MarkdownViewer {
   private setupMarkdownRenderer(): void {
     const renderer: RendererObject = {
       image({ href, title, text }) {
-        return `<img src="${escapeHtml(href)}" alt="${text}" title="${escapeHtml(title || "")}">`;
+        return `<img src="${escapeHtml(href)}" alt="${escapeHtml(text)}" title="${escapeHtml(title || "")}">`;
       },
-      link({ href, tokens }) {
+      link({ href, title, tokens }) {
         const escapedHref = escapeHtml(href);
         const text = this.parser.parseInline(tokens);
+        const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
         const isExternal =
           href.startsWith("http://") || href.startsWith("https://");
-        const isMarkdown = /\.(md|markdown|mdown|mkd)$/i.test(href);
-        if (isMarkdown) {
-          return `<a href="${escapedHref}" class="md-link" data-file="${escapedHref}">${text}</a>`;
+        const pathOnly = href.split(/[?#]/)[0];
+        if (/\.(md|markdown|mdown|mkd)$/i.test(pathOnly)) {
+          return `<a href="${escapedHref}" class="md-link" data-file="${escapeHtml(pathOnly)}"${titleAttr}>${text}</a>`;
         }
-        return `<a href="${escapedHref}" ${isExternal ? 'target="_blank"' : ""} rel="noopener noreferrer">${text}</a>`;
+        return `<a href="${escapedHref}"${titleAttr} ${isExternal ? 'target="_blank"' : ""} rel="noopener noreferrer">${text}</a>`;
       },
     };
 
@@ -132,7 +132,9 @@ class MarkdownViewer {
       });
 
       if (selected && typeof selected === "string") {
-        const content = await readTextFile(selected);
+        const content = await invoke<string>("read_text_file", {
+          path: selected,
+        });
         this.openTab(selected, content);
       }
     } catch (error) {
@@ -176,10 +178,6 @@ class MarkdownViewer {
   }
 
   private async setupTauriListeners(): Promise<void> {
-    await listen("close-current-tab", () => {
-      this.closeActiveTab();
-    });
-
     await getCurrentWebview().onDragDropEvent(async (event) => {
       const body = document.body;
       if (event.payload.type === "enter" || event.payload.type === "over") {
@@ -193,7 +191,9 @@ class MarkdownViewer {
         );
         for (const filePath of mdFiles) {
           try {
-            const content = await readTextFile(filePath);
+            const content = await invoke<string>("read_text_file", {
+              path: filePath,
+            });
             this.openTab(filePath, content);
           } catch (error) {
             console.error("Failed to read dropped file:", filePath, error);
@@ -335,22 +335,11 @@ class MarkdownViewer {
   }
 
   private async parseMarkdown(tabId: string, content: string): Promise<string> {
-    let perTab = this.mermaidCodes.get(tabId);
-    if (!perTab) {
-      perTab = new Map();
-      this.mermaidCodes.set(tabId, perTab);
-    }
+    const perTab = this.mermaidCodes.get(tabId) ?? new Map<number, string>();
+    this.mermaidCodes.set(tabId, perTab);
     perTab.clear();
-    let index = 0;
 
-    const processed = content.replace(
-      /```mermaid\r?\n([\s\S]*?)```/g,
-      (_, code: string) => {
-        const currentIndex = index++;
-        perTab!.set(currentIndex, code.trim());
-        return `<div class="mermaid" data-mermaid-index="${currentIndex}"></div>`;
-      },
-    );
+    const processed = this.replaceMermaidBlocks(content, perTab);
 
     const html = await marked.parse(processed);
     return DOMPurify.sanitize(html, {
@@ -358,23 +347,82 @@ class MarkdownViewer {
     });
   }
 
-  private bytesToBase64(bytes: Uint8Array): string {
-    const chunkSize = 8192;
-    let binary = "";
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      binary += String.fromCharCode(
-        ...bytes.subarray(i, Math.min(i + chunkSize, bytes.length)),
-      );
+  private replaceMermaidBlocks(
+    content: string,
+    perTab: Map<number, string>,
+  ): string {
+    const lines = content.split(/\r?\n/);
+    const out: string[] = [];
+    let diagramIndex = 0;
+    let i = 0;
+
+    while (i < lines.length) {
+      const open = lines[i].match(/^\s*(`{3,}|~{3,})(.*)$/);
+
+      if (open && open[1] === "```" && open[2].trim() === "mermaid") {
+        const codeLines: string[] = [];
+        let j = i + 1;
+        while (j < lines.length && !this.closesFence(lines[j], open[1])) {
+          codeLines.push(lines[j]);
+          j += 1;
+        }
+        if (j < lines.length) {
+          perTab.set(diagramIndex, codeLines.join("\n").trim());
+          out.push(
+            `<div class="mermaid" data-mermaid-index="${diagramIndex}"></div>`,
+          );
+          diagramIndex += 1;
+          i = j + 1;
+          continue;
+        }
+      }
+
+      if (open) {
+        let j = i + 1;
+        while (j < lines.length && !this.closesFence(lines[j], open[1])) {
+          j += 1;
+        }
+        out.push(...lines.slice(i, Math.min(j + 1, lines.length)));
+        i = j + 1;
+        continue;
+      }
+
+      out.push(lines[i]);
+      i += 1;
     }
-    return btoa(binary);
+
+    return out.join("\n");
+  }
+
+  private closesFence(line: string, open: string): boolean {
+    const close = line.match(/^\s*(`{3,}|~{3,})\s*$/);
+    return (
+      close !== null &&
+      close[1][0] === open[0] &&
+      close[1].length >= open.length
+    );
+  }
+
+  private readAsDataUrl(
+    contents: Uint8Array<ArrayBuffer>,
+    mimeType: string,
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener("load", () => resolve(reader.result as string));
+      reader.addEventListener("error", () =>
+        reject(reader.error ?? new Error("failed to read image data")),
+      );
+      reader.readAsDataURL(new Blob([contents], { type: mimeType }));
+    });
   }
 
   private async setupContentHandlers(): Promise<void> {
-    const mdLinks = document.querySelectorAll("a.md-link");
+    const mdLinks = document.querySelectorAll<HTMLAnchorElement>("a.md-link");
     for (const link of Array.from(mdLinks)) {
       link.addEventListener("click", async (e) => {
         e.preventDefault();
-        const filePath = (link as HTMLAnchorElement).dataset.file;
+        const filePath = link.dataset.file;
         if (!filePath) return;
 
         const currentTab = this.tabs.find((t) => t.id === this.activeTabId);
@@ -384,7 +432,9 @@ class MarkdownViewer {
             filePath,
           );
           try {
-            const content = await readTextFile(resolvedPath);
+            const content = await invoke<string>("read_text_file", {
+              path: resolvedPath,
+            });
             this.openTab(resolvedPath, content);
           } catch (error) {
             console.error("Failed to read markdown file:", error);
@@ -394,29 +444,37 @@ class MarkdownViewer {
       });
     }
 
-    const externalLinks = document.querySelectorAll('a[target="_blank"]');
-    for (const link of Array.from(externalLinks)) {
+    const anchors = document.querySelectorAll<HTMLAnchorElement>("a[href]");
+    for (const link of Array.from(anchors)) {
+      if (link.classList.contains("md-link")) continue;
+      const href = link.getAttribute("href");
+      // fragment-only links fall through to the default no-op hash change
+      if (!href || href.startsWith("#")) continue;
+
       link.addEventListener("click", async (e) => {
         e.preventDefault();
-        const href = (link as HTMLAnchorElement).getAttribute("href");
-        if (href) {
-          try {
-            await openUrl(href);
-          } catch (error) {
-            console.error("Failed to open URL:", error);
-            this.showToast(`Failed to open URL: ${href}`);
-          }
+        if (!/^(https?:|mailto:|tel:|ftp:)/i.test(href)) {
+          this.showToast(`Unsupported link: ${href}`);
+          return;
+        }
+        try {
+          await openUrl(href);
+        } catch (error) {
+          console.error("Failed to open URL:", error);
+          this.showToast(`Failed to open URL: ${href}`);
         }
       });
     }
 
     const images = document.querySelectorAll("img");
+    // The loop awaits below, so pin the base to the tab being rendered
+    // instead of re-reading the active tab each iteration.
+    const currentTab = this.tabs.find((t) => t.id === this.activeTabId);
+    if (!currentTab) return;
+
     for (const img of Array.from(images)) {
       const src = img.getAttribute("src");
       if (!src || /^(data:|file:|https?:)/.test(src)) continue;
-
-      const currentTab = this.tabs.find((t) => t.id === this.activeTabId);
-      if (!currentTab) continue;
 
       const fullPath = this.resolveRelativePath(currentTab.filePath, src);
       const ext = fullPath.split(".").pop()?.toLowerCase() || "";
@@ -424,9 +482,13 @@ class MarkdownViewer {
       if (!mimeType) continue;
 
       try {
-        const contents = await readFile(fullPath);
-        img.src = `data:${mimeType};base64,${this.bytesToBase64(contents)}`;
+        const bytes = await invoke<ArrayBuffer>("read_binary_file", {
+          path: fullPath,
+        });
+        if (this.activeTabId !== currentTab.id) return;
+        img.src = await this.readAsDataUrl(new Uint8Array(bytes), mimeType);
       } catch (error) {
+        if (this.activeTabId !== currentTab.id) return;
         console.error("Failed to load image:", fullPath, error);
         this.showToast(`Failed to load image: ${fullPath}`);
       }
